@@ -1,0 +1,71 @@
+name: PDF Structural Processor
+
+on:
+  push:
+    paths:
+      - "input/*.pdf"
+  workflow_dispatch:
+    inputs:
+      max_parallel:
+        description: "Max parallel jobs"
+        default: "5"
+        type: string
+
+jobs:
+  process-pdfs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y poppler-utils tesseract-ocr tesseract-ocr-jpn
+
+      - name: Install Python dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run PDF Processor
+        env:
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          cd scripts
+          python processor.py
+
+      - name: Commit processed files
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add output/*.md logs/*.json
+          git diff --staged --quiet || git commit -m "Auto-processed PDFs [skip ci]"
+          git push
+
+      - name: Upload processing logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: processing-logs
+          path: logs/
+          retention-days: 30
+
+      - name: Summary
+        run: |
+          echo "## Processing Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ -f logs/queue_status.json ]; then
+            cat logs/queue_status.json >> $GITHUB_STEP_SUMMARY
+          fi

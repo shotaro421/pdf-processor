@@ -66,21 +66,6 @@ class PDFConverterApp:
         self.file_listbox.pack(fill=tk.X, pady=(10, 0))
         self.btn_convert = ttk.Button(main_frame, text="Start Conversion (Upload to GitHub)", style="Big.TButton", command=self.start_conversion)
         self.btn_convert.pack(pady=15)
-        self.progress = ttk.Progressbar(main_frame, mode="indeterminate", length=400)
-        self.progress.pack(pady=(0, 10))
-        self.status_var = tk.StringVar(value="Ready...")
-        self.status_label = ttk.Label(main_frame, textvariable=self.status_var, style="Status.TLabel")
-        self.status_label.pack(pady=(0, 15))
-        result_frame = ttk.LabelFrame(main_frame, text="Results", padding=10)
-        result_frame.pack(fill=tk.BOTH, expand=True)
-        self.result_text = scrolledtext.ScrolledText(result_frame, wrap=tk.WORD, font=("Consolas", 10), height=15)
-        self.result_text.pack(fill=tk.BOTH, expand=True)
-        bottom_frame = ttk.Frame(main_frame)
-        bottom_frame.pack(fill=tk.X, pady=(15, 0))
-        self.btn_open_output = ttk.Button(bottom_frame, text="Open Output Folder", command=self.open_output_folder)
-        self.btn_open_output.pack(side=tk.LEFT)
-        self.btn_clear_log = ttk.Button(bottom_frame, text="Clear Log", command=self.clear_log)
-        self.btn_clear_log.pack(side=tk.LEFT, padx=10)
 
     def clear_log(self):
         self.result_text.delete(1.0, tk.END)
@@ -109,6 +94,30 @@ class PDFConverterApp:
         self.result_text.see(tk.END)
         self.root.update()
 
+    def set_status(self, message):
+        self.status_var.set(message)
+        self.root.update()
+
+    def run_git(self, args):
+        startupinfo = subprocess.STARTUPINFO()
+        startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+        startupinfo.wShowWindow = subprocess.SW_HIDE
+        result = subprocess.run(["git"] + args, cwd=self.config.repo_dir, capture_output=True, text=True, encoding="utf-8", errors="replace", startupinfo=startupinfo, creationflags=subprocess.CREATE_NO_WINDOW)
+        return result.returncode == 0, result.stdout, result.stderr
+
+    def start_conversion(self):
+        if not self.selected_files:
+            messagebox.showwarning("Warning", "Please select PDF files first")
+            return
+        if self.processing:
+            messagebox.showinfo("Info", "Processing in progress. Please wait.")
+            return
+        self.processing = True
+        self.btn_convert.config(state="disabled")
+        self.progress.start(10)
+        self.current_job_files = [Path(f).stem for f in self.selected_files]
+        thread = threading.Thread(target=self.conversion_thread, daemon=True)
+        thread.start()
     def set_status(self, message):
         self.status_var.set(message)
         self.root.update()

@@ -1,0 +1,66 @@
+name: PDF Structural Processor
+
+on:
+  push:
+    paths:
+      - "input/*.pdf"
+  workflow_dispatch:
+
+jobs:
+  process-pdfs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.ref }}
+
+      - name: Verify files
+        run: |
+          echo "=== Checking queue_manager.py line 77 ==="
+          sed -n '75,80p' scripts/queue_manager.py
+          echo "=== End check ==="
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y poppler-utils tesseract-ocr tesseract-ocr-jpn
+
+      - name: Install Python dependencies
+        run: |
+          pip install --upgrade pip
+          pip install markitdown google-generativeai openai anthropic pyyaml PyMuPDF
+
+      - name: Create directories
+        run: mkdir -p logs output
+
+      - name: Run PDF Processor
+        env:
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+        run: |
+          cd scripts
+          python processor.py
+
+      - name: Commit processed files
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add -A output/ logs/
+          git diff --staged --quiet || git commit -m "Auto-processed PDFs [skip ci]"
+          git push
+
+      - name: Upload processing logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: processing-logs
+          path: logs/
+          if-no-files-found: ignore

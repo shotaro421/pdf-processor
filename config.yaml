@@ -1,0 +1,184 @@
+# PDF Structural Processor Configuration
+# ========================================
+
+# Processing Settings
+processing:
+  input_dir: "input"
+  output_dir: "output"
+  logs_dir: "logs"
+  max_parallel_jobs: 5  # GitHub Actions の並列実行数
+  retry_attempts: 3
+  retry_delay_seconds: 30
+
+# LLM Provider Configuration
+# 複数のLLMを用途に応じて切り替え
+llm:
+  # プライマリプロバイダー（メイン処理用）
+  primary:
+    provider: "gemini"
+    model: "gemini-2.0-flash"
+    max_tokens: 8192
+    temperature: 0
+    
+  # セカンダリプロバイダー（複雑な表/図解用）
+  secondary:
+    provider: "gemini"
+    model: "gemini-2.5-pro"
+    max_tokens: 16384
+    temperature: 0
+    
+  # フォールバック（API制限時）
+  fallback:
+    provider: "openai"
+    model: "gpt-4o-mini"
+    max_tokens: 8192
+    temperature: 0
+
+  # プロバイダー別設定
+  providers:
+    gemini:
+      api_key_env: "GOOGLE_API_KEY"
+      base_url: "https://generativelanguage.googleapis.com/v1beta"
+      rate_limit_rpm: 60  # requests per minute
+      
+    openai:
+      api_key_env: "OPENAI_API_KEY"
+      base_url: "https://api.openai.com/v1"
+      rate_limit_rpm: 60
+      
+    anthropic:
+      api_key_env: "ANTHROPIC_API_KEY"
+      base_url: "https://api.anthropic.com/v1"
+      rate_limit_rpm: 50
+
+# Chunking Configuration
+# 2,300ページ級のドキュメント用に最適化
+chunking:
+  strategy: "hybrid"  # hybrid | page | section | token
+  max_tokens_per_chunk: 30000  # Gemini の大きなコンテキストを活用
+  overlap_tokens: 500  # チャンク間のオーバーラップ
+  preserve_tables: true  # 表を分割しない
+  preserve_sections: true  # セクションを可能な限り保持
+  
+  # ドキュメントタイプ別の分割戦略
+  document_types:
+    financial_report:
+      split_by: "section"
+      section_markers: ["第一部", "第二部", "第三部", "事業の状況", "経理の状況"]
+      
+    annual_report:
+      split_by: "chapter"
+      section_markers: ["はじめに", "経営方針", "事業概況", "財務ハイライト"]
+      
+    integrated_report:
+      split_by: "section"
+      section_markers: ["価値創造", "ESG", "ガバナンス", "財務・非財務データ"]
+
+# OCR Configuration
+ocr:
+  enabled: true
+  provider: "google_vision"  # google_vision | tesseract | azure
+  languages: ["ja", "en"]
+  detect_tables: true
+  detect_charts: true
+  confidence_threshold: 0.8
+  
+  # Google Cloud Vision 設定
+  google_vision:
+    api_key_env: "GOOGLE_CLOUD_API_KEY"
+    features:
+      - "DOCUMENT_TEXT_DETECTION"
+      - "TABLE_DETECTION"
+      
+  # Tesseract（ローカルフォールバック）
+  tesseract:
+    path: "/usr/bin/tesseract"
+    config: "--oem 3 --psm 6"
+
+# Output Format Configuration
+# 出力フォーマットのカスタマイズ
+output:
+  format: "markdown"  # markdown | json | both
+  
+  # Markdownテンプレート設定
+  markdown:
+    include_frontmatter: true
+    include_toc: true
+    include_mermaid: true
+    heading_style: "atx"  # atx (#) | setext (underline)
+    table_style: "pipe"   # pipe | grid
+    
+  # フロントマターに含める項目
+  frontmatter:
+    - title
+    - summary
+    - keywords
+    - document_type
+    - source_file
+    - processed_at
+    - page_count
+    - structure
+    - key_metrics
+    
+  # セクション構造
+  sections:
+    - executive_summary
+    - table_of_contents
+    - main_content
+    - tables_and_figures
+    - appendix
+
+# Queue Management
+# 処理キューの設定
+queue:
+  enabled: true
+  max_queue_size: 100
+  priority_levels:
+    high: 1
+    normal: 2
+    low: 3
+  default_priority: "normal"
+  
+  # ステータスファイル
+  status_file: "logs/queue_status.json"
+  
+  # バッチ処理設定
+  batch:
+    enabled: true
+    batch_size: 10  # 一度に処理するファイル数
+    delay_between_batches: 60  # 秒
+
+# Document Classification
+# ドキュメント自動分類
+classification:
+  enabled: true
+  rules:
+    - pattern: "有価証券報告書"
+      type: "securities_report"
+      prompt_template: "financial_report.txt"
+      
+    - pattern: "決算短信|決算報告"
+      type: "earnings_report"
+      prompt_template: "earnings_report.txt"
+      
+    - pattern: "統合報告書|アニュアルレポート"
+      type: "integrated_report"
+      prompt_template: "integrated_report.txt"
+      
+    - pattern: ".*"
+      type: "default"
+      prompt_template: "default.txt"
+
+# Logging Configuration
+logging:
+  level: "INFO"  # DEBUG | INFO | WARNING | ERROR
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file: "logs/processor.log"
+  max_size_mb: 10
+  backup_count: 5
+
+# Cost Tracking
+cost_tracking:
+  enabled: true
+  output_file: "logs/cost_report.json"
+  alert_threshold_usd: 50  # 月額アラート閾値

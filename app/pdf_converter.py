@@ -27,8 +27,18 @@ class PDFConverterApp:
         self.config = Config()
         self.selected_files = []
         self.processing = False
+        self.current_job_files = []  # Track files being processed
         self.setup_ui()
         self.setup_styles()
+        self.show_welcome()
+
+    def show_welcome(self):
+        self.result_text.insert(tk.END, "Welcome to PDF Converter!\n\n")
+        self.result_text.insert(tk.END, "How to use:\n")
+        self.result_text.insert(tk.END, "1. Click 'Select Files' to choose PDF files\n")
+        self.result_text.insert(tk.END, "2. Click 'Start Conversion' to upload and process\n")
+        self.result_text.insert(tk.END, "3. Wait for processing to complete\n")
+        self.result_text.insert(tk.END, "4. Results will appear here\n")
 
     def setup_styles(self):
         style = ttk.Style()
@@ -69,8 +79,12 @@ class PDFConverterApp:
         bottom_frame.pack(fill=tk.X, pady=(15, 0))
         self.btn_open_output = ttk.Button(bottom_frame, text="Open Output Folder", command=self.open_output_folder)
         self.btn_open_output.pack(side=tk.LEFT)
-        self.btn_refresh = ttk.Button(bottom_frame, text="Refresh Results", command=self.refresh_results)
-        self.btn_refresh.pack(side=tk.LEFT, padx=10)
+        self.btn_clear_log = ttk.Button(bottom_frame, text="Clear Log", command=self.clear_log)
+        self.btn_clear_log.pack(side=tk.LEFT, padx=10)
+
+    def clear_log(self):
+        self.result_text.delete(1.0, tk.END)
+        self.show_welcome()
 
     def select_files(self):
         files = filedialog.askopenfilenames(title="Select PDF files", filetypes=[("PDF files", "*.pdf"), ("All files", "*.*")])
@@ -113,6 +127,7 @@ class PDFConverterApp:
         self.processing = True
         self.btn_convert.config(state="disabled")
         self.progress.start(10)
+        self.current_job_files = [Path(f).stem for f in self.selected_files]
         thread = threading.Thread(target=self.conversion_thread, daemon=True)
         thread.start()
 
@@ -120,6 +135,8 @@ class PDFConverterApp:
         try:
             self.result_text.delete(1.0, tk.END)
             self.log("Starting conversion process...")
+            self.log(f"Files to convert: {', '.join(self.current_job_files)}")
+            self.log("")
             self.set_status("Updating repository...")
             self.log("Running git pull...")
             self.run_git(["pull", "origin", "main"])
@@ -141,8 +158,10 @@ class PDFConverterApp:
             else:
                 self.log(f"Git push warning: {err}")
             self.set_status("Processing on GitHub Actions...")
+            self.log("")
             self.log("Waiting for GitHub Actions processing...")
             self.log("(Large PDFs may take several minutes)")
+            self.log("")
             self.wait_for_completion()
         except Exception as e:
             self.log(f"Error: {str(e)}")
@@ -164,25 +183,26 @@ class PDFConverterApp:
                     with open(status_file, "r", encoding="utf-8") as f:
                         status = json.load(f)
                     jobs = status.get("jobs", [])
-                    if jobs:
-                        completed = sum(1 for j in jobs if j.get("status") == "completed")
-                        pending = sum(1 for j in jobs if j.get("status") in ("pending", "processing"))
-                        failed = sum(1 for j in jobs if j.get("status") == "failed")
+                    current_jobs = [j for j in jobs if Path(j.get("filename", "")).stem in self.current_job_files]
+                    if current_jobs:
+                        completed = sum(1 for j in current_jobs if j.get("status") == "completed")
+                        pending = sum(1 for j in current_jobs if j.get("status") in ("pending", "processing"))
+                        failed = sum(1 for j in current_jobs if j.get("status") == "failed")
                         status_msg = f"Done: {completed} / Processing: {pending} / Failed: {failed}"
                         if status_msg != last_status:
                             self.log(status_msg)
                             last_status = status_msg
                         self.set_status(f"Processing... {status_msg}")
                         if pending == 0 and (completed > 0 or failed > 0):
+                            self.log("")
                             self.log("All processing complete!")
                             self.download_results()
                             return
                 except:
                     pass
-            outputs = list(self.config.output_dir.glob("*.md"))
-            new_outputs = [o for o in outputs if o.name != ".gitkeep"]
-            if new_outputs and not status_file.exists():
-                self.log(f"{len(new_outputs)} file(s) generated")
+            current_outputs = [o for o in self.config.output_dir.glob("*.md") if o.stem in self.current_job_files]
+            if current_outputs:
+                self.log(f"{len(current_outputs)} file(s) generated")
                 self.download_results()
                 return
             time.sleep(self.config.check_interval)
@@ -192,29 +212,32 @@ class PDFConverterApp:
     def download_results(self):
         self.set_status("Downloading results...")
         self.run_git(["pull", "origin", "main"])
-        outputs = list(self.config.output_dir.glob("*.md"))
-        outputs = [o for o in outputs if o.name != ".gitkeep"]
+        outputs = [o for o in self.config.output_dir.glob("*.md") if o.stem in self.current_job_files]
         if outputs:
             self.log("")
-            self.log("=" * 40)
-            self.log("Conversion Results:")
+            self.log("=" * 50)
+            self.log("CONVERSION RESULTS (Current Session Only)")
+            self.log("=" * 50)
             for o in outputs:
                 size = o.stat().st_size / 1024
-                lines = len(o.read_text(encoding="utf-8", errors="replace").split("\n"))
+                content = o.read_text(encoding="utf-8", errors="replace")
+                lines = len(content.split("\n"))
                 self.log(f"  {o.name} ({size:.1f} KB, {lines} lines)")
-            self.log("=" * 40)
+            self.log("=" * 50)
             self.log("")
-            preview = outputs[0].read_text(encoding="utf-8", errors="replace")[:2000]
-            self.log("Preview (first 2000 chars):")
-            self.log("-" * 40)
-            self.log(preview)
-            if len(outputs[0].read_text(encoding="utf-8", errors="replace")) > 2000:
-                self.log("...(continued)")
+            first_output = outputs[0]
+            content = first_output.read_text(encoding="utf-8", errors="replace")
+            preview = content[:3000]
+            self.log(f"Preview of {first_output.name}:")
+            self.log("-" * 50)
+            self.result_text.insert(tk.END, preview + "\n")
+            if len(content) > 3000:
+                self.log("")
+                self.log(f"... (showing first 3000 of {len(content)} characters)")
+            self.result_text.see(tk.END)
+        else:
+            self.log("No output files found for current session")
         self.set_status("Complete!")
-
-    def refresh_results(self):
-        self.run_git(["pull", "origin", "main"])
-        self.download_results()
 
     def open_output_folder(self):
         self.config.output_dir.mkdir(exist_ok=True)

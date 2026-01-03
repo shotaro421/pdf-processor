@@ -1,20 +1,20 @@
 {
-  "updated_at": "2026-01-03T03:47:39.673636",
+  "updated_at": "2026-01-03T05:41:59.912042",
   "jobs": [
     {
-      "id": "20260103033823_sample.pdf",
+      "id": "20260103052240_sample.pdf",
       "filename": "sample.pdf",
       "input_path": "input/sample.pdf",
       "output_path": "output/sample.md",
       "status": "completed",
       "priority": 2,
-      "created_at": "2026-01-03T03:38:23.998655",
-      "started_at": "2026-01-03T03:38:23.999025",
-      "completed_at": "2026-01-03T03:47:39.673593",
+      "created_at": "2026-01-03T05:22:40.381208",
+      "started_at": "2026-01-03T05:22:40.381627",
+      "completed_at": "2026-01-03T05:41:59.912001",
       "error_message": null,
       "chunks_total": 0,
       "chunks_processed": 0,
-      "cost_usd": 0.048616
+      "cost_usd": 0.03400000000000002
     }
   ],
   "stats": {
@@ -22,6 +22,6 @@
       "completed": 1
     },
     "total_jobs": 1,
-    "total_cost_usd": 0.048616
+    "total_cost_usd": 0.03400000000000002
   }
 }

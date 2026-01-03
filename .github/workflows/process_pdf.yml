@@ -18,12 +18,6 @@ jobs:
           fetch-depth: 0
           ref: ${{ github.ref }}
 
-      - name: Verify files
-        run: |
-          echo "=== Checking queue_manager.py line 77 ==="
-          sed -n '75,80p' scripts/queue_manager.py
-          echo "=== End check ==="
-
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -37,10 +31,14 @@ jobs:
       - name: Install Python dependencies
         run: |
           pip install --upgrade pip
-          pip install markitdown google-generativeai openai anthropic pyyaml PyMuPDF
+          pip install "markitdown[pdf]" google-generativeai openai anthropic pyyaml PyMuPDF pdfminer.six
 
       - name: Create directories
         run: mkdir -p logs output
+
+      - name: Reset queue for reprocessing
+        run: |
+          echo '{"updated_at": "", "jobs": [], "stats": {}}' > logs/queue_status.json
 
       - name: Run PDF Processor
         env:

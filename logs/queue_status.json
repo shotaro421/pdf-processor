@@ -1,27 +1,72 @@
 {
-  "updated_at": "2026-01-03T05:41:59.912042",
+  "updated_at": "2026-01-03T06:47:16.250408",
   "jobs": [
     {
-      "id": "20260103052240_sample.pdf",
+      "id": "20260103062805_「わかる」から「動ける」まで 言葉の解像度を上げる.pdf",
+      "filename": "「わかる」から「動ける」まで 言葉の解像度を上げる.pdf",
+      "input_path": "input/「わかる」から「動ける」まで 言葉の解像度を上げる.pdf",
+      "output_path": "output/「わかる」から「動ける」まで 言葉の解像度を上げる.md",
+      "status": "completed",
+      "priority": 2,
+      "created_at": "2026-01-03T06:28:05.391959",
+      "started_at": "2026-01-03T06:28:05.394018",
+      "completed_at": "2026-01-03T06:35:16.905266",
+      "error_message": null,
+      "chunks_total": 0,
+      "chunks_processed": 0,
+      "cost_usd": 0.017000000000000008
+    },
+    {
+      "id": "20260103062805_すごいメモ。.pdf",
+      "filename": "すごいメモ。.pdf",
+      "input_path": "input/すごいメモ。.pdf",
+      "output_path": "output/すごいメモ。.md",
+      "status": "completed",
+      "priority": 2,
+      "created_at": "2026-01-03T06:28:05.392372",
+      "started_at": "2026-01-03T06:28:05.395021",
+      "completed_at": "2026-01-03T06:37:29.082156",
+      "error_message": null,
+      "chunks_total": 0,
+      "chunks_processed": 0,
+      "cost_usd": 0.01900000000000001
+    },
+    {
+      "id": "20260103062805_sample.pdf",
       "filename": "sample.pdf",
       "input_path": "input/sample.pdf",
       "output_path": "output/sample.md",
       "status": "completed",
       "priority": 2,
-      "created_at": "2026-01-03T05:22:40.381208",
-      "started_at": "2026-01-03T05:22:40.381627",
-      "completed_at": "2026-01-03T05:41:59.912001",
+      "created_at": "2026-01-03T06:28:05.392778",
+      "started_at": "2026-01-03T06:28:05.398331",
+      "completed_at": "2026-01-03T06:47:16.250372",
       "error_message": null,
       "chunks_total": 0,
       "chunks_processed": 0,
       "cost_usd": 0.03400000000000002
+    },
+    {
+      "id": "20260103062805_コンセプトのつくり方 .pdf",
+      "filename": "コンセプトのつくり方 .pdf",
+      "input_path": "input/コンセプトのつくり方 .pdf",
+      "output_path": "output/コンセプトのつくり方 .md",
+      "status": "completed",
+      "priority": 2,
+      "created_at": "2026-01-03T06:28:05.393166",
+      "started_at": "2026-01-03T06:28:05.400246",
+      "completed_at": "2026-01-03T06:34:08.332449",
+      "error_message": null,
+      "chunks_total": 0,
+      "chunks_processed": 0,
+      "cost_usd": 0.010000000000000002
     }
   ],
   "stats": {
     "by_status": {
-      "completed": 1
+      "completed": 4
     },
-    "total_jobs": 1,
-    "total_cost_usd": 0.03400000000000002
+    "total_jobs": 4,
+    "total_cost_usd": 0.08000000000000004
   }
 }

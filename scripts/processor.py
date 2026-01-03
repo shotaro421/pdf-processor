@@ -1,5 +1,6 @@
 """PDF Processor - Full document conversion to structured Markdown"""
 import os
+import re
 import yaml
 import logging
 from pathlib import Path
@@ -22,6 +23,19 @@ class PDFProcessor:
         self.llm_client = create_multi_llm_client_from_config(config)
         self.chunker = create_chunker_from_config(config)
         self.queue = create_queue_manager_from_config(config)
+    def _clean_llm_output(self, text):
+        """Remove code block markers from LLM output"""
+        import re
+        text = re.sub(r'^' + chr(96)*3 + r'\w*\s*
+?', '', text, flags=re.MULTILINE)
+        text = re.sub(r'
+?' + chr(96)*3 + r'\s*$', '', text, flags=re.MULTILINE)
+        text = re.sub(r'
+' + chr(96)*3 + r'\s*
+', '
+', text)
+        return text.strip()
+
 
     def _get_structure_prompt(self):
         return """You are a document structuring expert. Convert the provided raw text into well-formatted Markdown.
@@ -33,7 +47,7 @@ IMPORTANT RULES:
 4. Keep all numerical data, dates, and statistics exactly as they appear
 5. Preserve Japanese text exactly as written
 6. Add appropriate line breaks for readability
-7. Do NOT add YAML frontmatter - just output the formatted Markdown content
+7. Do NOT add YAML frontmatter. Do NOT wrap output in code blocks or triple backticks
 
 Output the formatted Markdown content directly."""
 
@@ -43,7 +57,7 @@ Output the formatted Markdown content directly."""
 - summary: A 2-3 sentence summary of the document
 - keywords: An array of 10-15 relevant keywords
 
-Output ONLY the YAML frontmatter block starting with --- and ending with ---
+Output ONLY raw YAML starting with --- and ending with ---. Do NOT use code blocks or triple backticks
 Example:
 ---
 title: "Document Title"
@@ -84,7 +98,7 @@ keywords: ["keyword1", "keyword2"]
                         chunk.content,
                         complexity="complex" if chunk.has_tables else "normal"
                     )
-                    processed_chunks.append(resp.content)
+                    processed_chunks.append(self._clean_llm_output(resp.content))
                     total_cost += resp.cost_usd
                     logger.info(f"Chunk {i+1} processed, cost: ${resp.cost_usd:.4f}")
                 except Exception as e:
@@ -99,7 +113,7 @@ keywords: ["keyword1", "keyword2"]
                     chunks[0].content[:5000],  # Use first 5000 chars for frontmatter
                     complexity="normal"
                 )
-                frontmatter = frontmatter_resp.content.strip()
+                frontmatter = self._clean_llm_output(frontmatter_resp.content)
                 total_cost += frontmatter_resp.cost_usd
                 
                 # Ensure frontmatter has proper delimiters
